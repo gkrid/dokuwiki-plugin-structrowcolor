@@ -7,8 +7,6 @@
  */
 
 // must be run within Dokuwiki
-use dokuwiki\plugin\struct\meta\Value;
-
 if (!defined('DOKU_INC')) {
     die();
 }
@@ -91,7 +89,11 @@ class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
     {
         $mode = $event->data['mode'];
         $renderer = $event->data['renderer'];
+        /** @var \dokuwiki\plugin\struct\meta\SearchConfig $searchConfig */
+        $searchConfig = $event->data['searchConfig'];
         $data = $event->data['data'];
+
+        $rownum  = $event->data['rownum'];
 
         if ($mode != 'xhtml') return;
 
@@ -99,13 +101,23 @@ class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
         if (!$rowcolor_column) return;
         if (!$this->rowStartPos) return;
 
+        $search = new \dokuwiki\plugin\struct\meta\Search();
+        foreach ($searchConfig->getSchemas() as $schema) {
+            $search->addSchema($schema->getTable());
+        }
+        $search->addColumn($rowcolor_column);
+        $pids = $searchConfig->getPids();
+        if ($search->getSchemas()[0]->isLookup()) {
+            $search->addFilter('%rowid%', $pids[$rownum], '=');
+        } else {
+            $search->addFilter('%pageid%', $pids[$rownum], '=');
+        }
+
+        $result = $search->execute();
+
         $bgcolor = '';
-        /** @var Value $value */
-        foreach($event->data['row'] as $colnum => $value) {
-            $col = $value->getColumn()->getLabel();
-            if ($col == $rowcolor_column) {
-                $bgcolor = $value->getRawValue();
-            }
+        if (count($result) >= 1) {
+            $bgcolor = $result[0][0]->getRawValue();
         }
 
         //empty color
