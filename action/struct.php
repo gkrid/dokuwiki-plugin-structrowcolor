@@ -105,7 +105,7 @@ class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
         foreach ($searchConfig->getSchemas() as $schema) {
             $search->addSchema($schema->getTable());
         }
-        $search->addColumn($rowcolor_column);
+        $search->addColumn('*');
         $pids = $searchConfig->getPids();
         if ($search->getSchemas()[0]->isLookup()) {
             $search->addFilter('%rowid%', $pids[$rownum], '=');
@@ -117,7 +117,12 @@ class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
 
         $bgcolor = '';
         if (count($result) >= 1) {
-            $bgcolor = $result[0][0]->getRawValue();
+            foreach ($result[0] as $value) {
+                if ($value->getColumn()->getLabel() == $rowcolor_column) {
+                    $bgcolor = $value->getRawValue();
+                    break;
+                }
+            }
         }
 
         //empty color
