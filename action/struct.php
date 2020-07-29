@@ -7,6 +7,10 @@
  */
 
 // must be run within Dokuwiki
+use dokuwiki\plugin\struct\meta\Column;
+use dokuwiki\plugin\struct\meta\SearchConfig;
+use dokuwiki\plugin\struct\meta\Value;
+
 if (!defined('DOKU_INC')) {
     die();
 }
@@ -14,7 +18,7 @@ if (!defined('DOKU_INC')) {
 class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
 {
 
-    protected $rowStartPos = null;
+    protected $row_colors = [];
 
     /**
      * Registers a callback function for a given event
@@ -70,10 +74,33 @@ class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
 
         if ($mode != 'xhtml') return;
 
-        $rowcolor_column = $data['rowcolor'];
-        if (!$rowcolor_column) return;
+        $rowcolor = $data['rowcolor'];
+        if (!$rowcolor) return;
 
-        $this->rowStartPos = mb_strlen($renderer->doc);
+        /** @var SearchConfig $searchConfig */
+        $searchConfig = $event->data['searchConfig'];
+        $searchConfig_hash = spl_object_hash($searchConfig);
+        if (!isset($this->row_colors[$searchConfig_hash])) {
+            $this->row_colors[$searchConfig_hash] = [];
+
+            $rowcolor_column = $searchConfig->findColumn($rowcolor);
+
+            $searchConfig->addColumn('*');
+            $result = $searchConfig->execute();
+            foreach ($result as $rownum => $row) {
+                /** @var Value $value */
+                foreach ($row as $colnum => $value) {
+                    if ($value->getColumn() == $rowcolor_column) {
+                        $this->row_colors[$searchConfig_hash][$rownum] = $value->getRawValue();
+                        break;
+                    }
+                }
+            }
+
+        }
+
+        // save row start position
+        $event->data['rowstart']= mb_strlen($renderer->doc);
     }
 
     /**
@@ -88,48 +115,28 @@ class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
     public function handle_plugin_struct_aggregationtable_renderresultrow_after(Doku_Event $event)
     {
         $mode = $event->data['mode'];
+        if ($mode != 'xhtml') return;
+
         $renderer = $event->data['renderer'];
-        /** @var \dokuwiki\plugin\struct\meta\SearchConfig $searchConfig */
+        /** @var SearchConfig $searchConfig */
         $searchConfig = $event->data['searchConfig'];
         $data = $event->data['data'];
 
         $rownum  = $event->data['rownum'];
 
-        if ($mode != 'xhtml') return;
+        $rowstart = $event->data['rowstart'];
+        $rowcolor = $data['rowcolor'];
 
-        $rowcolor_column = $data['rowcolor'];
-        if (!$rowcolor_column) return;
-        if (!$this->rowStartPos) return;
+        if (!$rowcolor) return;
+        if (!$rowstart) return;
 
-        $search = new \dokuwiki\plugin\struct\meta\Search();
-        foreach ($searchConfig->getSchemas() as $schema) {
-            $search->addSchema($schema->getTable());
-        }
-        $search->addColumn('*');
-        $pids = $searchConfig->getPids();
-        if ($search->getSchemas()[0]->isLookup()) {
-            $search->addFilter('%rowid%', $pids[$rownum], '=');
-        } else {
-            $search->addFilter('%pageid%', $pids[$rownum], '=');
-        }
+        $searchConfig_hash = spl_object_hash($searchConfig);
+        $bgcolor = $this->row_colors[$searchConfig_hash][$rownum];
 
-        $result = $search->execute();
-
-        $bgcolor = '';
-        if (count($result) >= 1) {
-            foreach ($result[0] as $value) {
-                if ($value->getColumn()->getLabel() == $rowcolor_column) {
-                    $bgcolor = $value->getRawValue();
-                    break;
-                }
-            }
-        }
-
-        //empty color
         if (!$bgcolor) return;
 
-        $rest = mb_substr($renderer->doc, 0,  $this->rowStartPos);
-        $row = mb_substr($renderer->doc, $this->rowStartPos);
+        $rest = mb_substr($renderer->doc, 0,  $rowstart);
+        $row = mb_substr($renderer->doc, $rowstart);
         $row = ltrim($row);
         //check if we processing row
         if (mb_substr($row, 0, 3) != '<tr') return;
@@ -138,8 +145,6 @@ class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
         $tr_rest = mb_substr($row, 3);
 
         $renderer->doc = $rest . $tr_tag . ' style="background-color: '.$bgcolor.'"' . $tr_rest;
-
-        $this->rowStartPos = null;
     }
 
 }
