@@ -6,11 +6,11 @@
  * @author  Szymon Olewniczak <it@rid.pl>
  */
 
-// must be run within Dokuwiki
-use dokuwiki\plugin\struct\meta\Column;
+
 use dokuwiki\plugin\struct\meta\SearchConfig;
 use dokuwiki\plugin\struct\meta\Value;
 
+// must be run within Dokuwiki
 if (!defined('DOKU_INC')) {
     die();
 }
