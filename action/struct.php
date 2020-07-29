@@ -90,7 +90,7 @@ class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
             foreach ($result as $rownum => $row) {
                 /** @var Value $value */
                 foreach ($row as $colnum => $value) {
-                    if ($value->getColumn() == $rowcolor_column) {
+                    if ($value->getColumn() === $rowcolor_column) {
                         $this->row_colors[$searchConfig_hash][$rownum] = $value->getRawValue();
                         break;
                     }
@@ -144,7 +144,7 @@ class action_plugin_structrowcolor_struct extends DokuWiki_Action_Plugin
         $tr_tag = mb_substr($row, 0, 3);
         $tr_rest = mb_substr($row, 3);
 
-        $renderer->doc = $rest . $tr_tag . ' style="background-color: '.$bgcolor.'"' . $tr_rest;
+        $renderer->doc = $rest . $tr_tag . ' style="background-color: '.$bgcolor.'" ' . $tr_rest;
     }
 
 }
